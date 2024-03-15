@@ -1,3 +1,8 @@
+"""
+Modules to import.
+
+"""
+
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -8,6 +13,11 @@ from cycler import cycler
 import warnings
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+"""
+Initial settings.
+
+"""
+
 warnings.filterwarnings("ignore")
 plt.rcParams['text.usetex'] = True
 color = ['#377EB8', '#FF7F00', '#4DAF4A','#F781BF', '#A65628', '#984EA3','#999999', '#E41A1C', '#DEDE00']
@@ -15,7 +25,53 @@ style = ['-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-']
 default_cycler = (cycler(color=['#377EB8','#FF7F00','#4DAF4A','#FF7F00','#4DAF4A']))
 plt.rc('axes', prop_cycle=default_cycler)
 
+"""
+Functions.
+
+"""
+
 def plot(image,cmap='inferno',logscale=False,ampcol=3,size=6,unit=r'$\rm{I \ [MJy/sr]}$',title='',x_title=0.45,y_title=0.85,colorbar=True,no_show=False):
+    """
+    Quick plot for a single image.
+    
+    Parameters
+    ----------
+    image : numpy 2D array
+        Image to plot.
+    cmap : str, optional
+         Colormap to use.
+    logscale : bool, optional
+        Plot the image in log scale.
+        The default is False.
+    ampcol : float, optional
+        Range of values to plot in std unit, centered on the mean.
+        The default is 3.
+    size : float, optional
+        Size of the figure.
+        The default is 6.
+    unit : str, optional
+        Label of the colorbar.
+        The default is r'$\rm{I \ [MJy/sr]}$'.
+    title : str, optional
+        Title of the figure.
+        The default is no title.
+    x_title : float, optional
+        X position of the title in figure coordinates.
+        The default is 0.45.
+    y_title : float, optional
+        Y position of the title in figure coordinates.
+    colorbar : bool, optional
+        Set a colorbar.
+        The default is True.
+    no_show : bool, optional
+        Remove the plt.show(), which can cause problems to save the figure.
+        The default is False.
+        
+    Returns
+    -------
+    None
+    
+    """
     plt.figure(figsize=(size,size))
     if logscale == True:
         image = np.log(image)
@@ -29,6 +85,26 @@ def plot(image,cmap='inferno',logscale=False,ampcol=3,size=6,unit=r'$\rm{I \ [MJ
     return 
     
 def plot_subplot(ax,i,data,label):
+    """
+    Plot a subplot on a row figure.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes of the figure.
+    i : int
+        Ax index.
+    data : numpy 2D array
+        Data to plot.
+    label : str
+        Title of the subplot.
+
+    Returns
+    -------
+    A : matplotlib.image.AxesImage
+        Subplot.
+
+    """
     A = ax[i].imshow(data,cmap='inferno',vmin=np.mean(data)-3*np.std(data),vmax=np.mean(data)+3*np.std(data),origin='lower')
     ax[i].set_title(label,fontsize=20,pad=10)
     ax[i].grid(False)
@@ -37,45 +113,68 @@ def plot_subplot(ax,i,data,label):
     return A
 
 def set_colorbar(ax,A,i,label=r'$\rm{[\mu K_{CMB}]}$'):
+    """
+    Add a colorbar on a subplot.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes of the figure.
+    A : matplotlib.image.AxesImage
+        Subplot.
+    i : int
+        Ax index.
+    label : str, optional
+        Label of the colorbar.
+
+    Returns
+    -------
+    None
+
+    """
     def axins(i):
         return inset_axes(ax[i],width="100%", height="15%",loc='lower left',bbox_to_anchor=(0, -0.1, 1, 0.44),bbox_transform=ax[i].transAxes,borderpad=0,)
     cb=plt.colorbar(A,cax=axins(i),ax=None,orientation='horizontal')
     cb.set_label(label,rotation=0,fontsize=15,labelpad=6)
     return
 
-def powspec(image, reso=1, apo=1, N_bin=100, a=4, ret_bins=False, nan_frame=False, **kwargs):
-	
-    # reso have to be in arcmin
-    # the output unity is I²/sr
-    
-    def apodize(na, nb, radius):
-        na = int(na)
-        nb = int(nb)
-        ni = int(radius * na)
-        nj = int(radius * nb)
-        dni = na - ni
-        dnj = nb - nj
-        tap1d_x = np.zeros(na) + 1.0
-        tap1d_y = np.zeros(nb) + 1.0
-        tap1d_x[:dni] = (np.cos(3*np.pi/2.+np.pi/2.*(1.*np.linspace(0,dni-1,dni)/(dni-1)) ))
-        tap1d_x[na-dni:] = (np.cos(0.+np.pi/2.*(1.*np.linspace(0,dni-1,dni)/(dni-1)) ))
-        tap1d_y[:dnj] = (np.cos(3*np.pi/2.+np.pi/2.*(1.*np.linspace(0,dnj-1,dnj)/(dnj-1)) ))
-        tap1d_y[nb-dnj:] = (np.cos(0.+np.pi/2.*(1.*np.linspace(0,dnj-1,dnj)/(dnj-1)) ))
-        tapper = np.zeros([na,nb])
-        for i in range(nb):
-            tapper[:,i] = tap1d_x
-        for i in range(na):
-            tapper[i,:] = tapper[i,:] * tap1d_y
-        return tapper
-        
+def powspec(image, im2=None, reso=1, apo=1, N_bin=40, lin_log_trans=3, ret_bins=False):
+    """
+    Computes the power spectrum.
+
+    Parameters
+    ----------
+    image : numpy 2D array
+        Data of which the power spectrum is computed.
+    im2 : numpy 2D array, optional
+        If not None, the cross spectrum between image and im2 is computed. 
+        The default is None.
+    reso : float, optional
+        Pixel size in arcminute. 
+        The default is 1.
+    apo : float, optional
+        Width of apodization mask. If the data are not periodic, we recommand to use apo=0.9. 
+        The default is 1.
+    N_bin : int, optional
+        Number of bins. 
+        The default is 40.
+    lin_log_trans : float, optional
+        Define the transition between the linear and logarithmic binning regime. 
+        The default is 3.
+    ret_bins : bool, optional
+        Returns the bins. 
+        The default is False.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
+      
     na=image.shape[1]
     nb=image.shape[0]
     nf=max(na,nb)
-
-    if 'mask' in kwargs:
-        Mask = np.fft.ifftshift(kwargs.get('mask'))
-    else:
-        Mask = np.zeros(np.shape(image)) + 1
 
     k_crit = nf//2 
     k_crit_phy = 1/(2*reso) # k_max in arcmin-1
@@ -84,7 +183,7 @@ def powspec(image, reso=1, apo=1, N_bin=100, a=4, ret_bins=False, nan_frame=Fals
         indices = np.arange(N+1)
         return k_crit * np.sinh(a*indices/N) / np.sinh(a)
     
-    bins = bining(k_crit,a,N_bin)
+    bins = bining(k_crit,lin_log_trans,N_bin)
     
     bins_size = np.zeros(N_bin) # bins size in arcmin-1
     for i in range(N_bin):
@@ -92,17 +191,10 @@ def powspec(image, reso=1, apo=1, N_bin=100, a=4, ret_bins=False, nan_frame=Fals
     
     if apo < 1:
         image = image * apodize(na,nb,apo)
-    
-	#Fourier transform & 2D power spectrum
-	#---------------------------------------------
-	
-    if(nan_frame == True):
-        image = np.nan_to_num(image, copy=False, nan=0)
 
     imft=np.fft.fft2(image) / (na*nb)
 	
-    if 'im2' in kwargs:
-        im2 = kwargs.get('im2')
+    if im2 is not None:
         if apo < 1:
             im2 = im2 * apodize(na,nb,apo)
         im2ft = np.fft.fft2(im2) / (na*nb)
@@ -111,9 +203,6 @@ def powspec(image, reso=1, apo=1, N_bin=100, a=4, ret_bins=False, nan_frame=Fals
         ps2D = np.abs( imft )**2 * (na*nb)
 
     del imft
-
-	#Set-up kbins
-	#---------------------------------------------
 
     x=np.arange(na)
     y=np.arange(nb)
@@ -139,7 +228,7 @@ def powspec(image, reso=1, apo=1, N_bin=100, a=4, ret_bins=False, nan_frame=Fals
     k_mat= np.roll(k_mat,int(shiftx), axis=1)
     k_mat= np.roll(k_mat,int(shifty), axis=0)
 
-    hval, rbin = np.histogram(k_mat,bins=bins,weights=Mask)
+    hval, rbin = np.histogram(k_mat,bins=bins)
 
 	#Average values in same k bin
 	#---------------------------------------------
@@ -148,8 +237,8 @@ def powspec(image, reso=1, apo=1, N_bin=100, a=4, ret_bins=False, nan_frame=Fals
     kpow = np.zeros(N_bin-1)
 
     for j in range(N_bin-1):
-        kval[j] = np.sum(k_mat[np.logical_and(np.logical_and(k_mat >= bins[j], k_mat < bins[j+1]),Mask == 1)]) / hval[j]
-        kpow[j] = np.sum(np.real(ps2D[np.logical_and(np.logical_and(k_mat >= bins[j], k_mat < bins[j+1]),Mask == 1)])) / hval[j]
+        kval[j] = np.sum(k_mat[np.logical_and(k_mat >= bins[j], k_mat < bins[j+1])]) / hval[j]
+        kpow[j] = np.sum(np.real(ps2D[np.logical_and(k_mat >= bins[j], k_mat < bins[j+1])])) / hval[j]
         
     spec_k = kpow[1:np.size(hval)-1] * (reso / 60 / 180 * np.pi)**2 / np.mean(apodize(na,nb,apo)**2)
     
