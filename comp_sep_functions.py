@@ -155,7 +155,36 @@ def compute_mask(step, x, std, wph_op, wph_model, pbc, device):
     return mask.to(device)
 
 def compute_loss_B(x, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc):
-    # Computes the loss 'à la Bruno'
+    """
+    Computes the loss in "Bruno's formalism".
+
+    Parameters
+    ----------
+    x : torch 2D tensor
+        Running map.
+    coeffs_target : torch 1D tensor
+        Target WPH statistics.
+    std : torch 1D tensor
+        Standard deviations of the WPH statistics.
+    mask : torch 1D tensor
+        Mask for the WPH statistics.
+    device : int or str
+        Device on which the computation are done.
+    Mn : int
+        Number of noise maps.
+    wph_op : pywph.wph_op
+        WPH statistics operator.
+    noise : numpy 3D array
+        Noise maps.
+    pbc : bool
+        True for periodic boundary conditions.
+
+    Returns
+    -------
+    float
+        The total loss value.
+
+    """
     coeffs_target = coeffs_target.to(device)
     std = std.to(device)
     mask = mask.to(device)
@@ -171,7 +200,34 @@ def compute_loss_B(x, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc):
     return loss_tot
 
 def compute_loss_JM(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
-    # Computes the loss 'à la Jean-Marc'
+    """
+    Computes the loss in "Jean-Marc's formalism".
+
+    Parameters
+    ----------
+    x : torch 2D tensor
+        Running map.
+    coeffs_target : torch 1D tensor
+        Target WPH statistics.
+    std : torch 1D tensor
+        Standard deviations of the WPH statistics.
+    mask : torch 1D tensor
+        Mask for the WPH statistics.
+    device : int or str
+        Device on which the computation are done.
+    Mn : int
+        Number of noise maps.
+    wph_op : pywph.wph_op
+        WPH statistics operator.
+    pbc : bool
+        True for periodic boundary conditions.
+
+    Returns
+    -------
+    float
+        The total loss value.
+
+    """
     coeffs_target = coeffs_target.to(device)
     std = std.to(device)
     mask = mask.to(device)
@@ -185,8 +241,43 @@ def compute_loss_JM(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
         del coeffs_chunk, indices, loss
     return loss_tot
 
-def objective(x, device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn, eval_cnt):
-    # Computes the loss and the corresponding gradient 
+def objective(x, device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn):
+    """
+    Computes the loss and the corresponding gradient.
+
+    Parameters
+    ----------
+    x : torch 2D tensor
+        Running map.
+    device : int or str
+        Device on which the computations are done.
+    style : str
+        'B' for "Bruno's formalism", 'JM' for "Jean-Marc's formalism".
+    coeffs_target : torch 1D tensor
+        Target WPH statistics.
+    std : torch 1D tensor
+        Standard deviations of the WPH statistics.
+    mask : torch 1D tensor
+        Mask for the WPH statistics.
+    wph_op : pywph.wph_op
+        WPH statistics operator.
+    noise : numpy 3D array
+        Noise maps.
+    pbc : bool
+        True for periodic boundary conditions.
+    N : int
+        Map size.
+    Mn : int
+        Number of noise maps.
+
+    Returns
+    -------
+    float
+        Loss value.
+    torch 1D tensor
+        Gradient of the loss.
+
+    """
     global eval_cnt
     print(f"Evaluation: {eval_cnt}")
     start_time = time.time()

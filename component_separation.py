@@ -9,7 +9,7 @@ import os
 cwd = os.getcwd()
 import sys
 sys.path.append(cwd)
-from comp_sep_functions import create_batch, compute_bias_std, compute_mask_S11, compute_mask, objective
+from comp_sep_functions import create_batch, compute_bias_std, compute_mask, objective
 
 '''
 This component separation algorithm aims to separate the statistics of a non-Gaussian field from noise
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         mask = compute_mask(1, s_tilde0, wph_op, wph_model, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde0.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn, eval_cnt), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde0.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde0, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde0 = s_tilde0.reshape((N, N)).astype(np.float32)
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         mask = compute_mask(2, s_tilde, std, wph_op, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn, eval_cnt), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde = s_tilde.reshape((N, N)).astype(np.float32)
