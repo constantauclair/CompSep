@@ -69,7 +69,7 @@ def plot(image,cmap='inferno',logscale=False,ampcol=3,size=6,unit=r'$\rm{I \ [MJ
         
     Returns
     -------
-    None
+    None.
     
     """
     plt.figure(figsize=(size,size))
@@ -101,7 +101,7 @@ def plot_subplot(ax,i,data,label):
 
     Returns
     -------
-    A : matplotlib.image.AxesImage
+    matplotlib.image.AxesImage
         Subplot.
 
     """
@@ -129,7 +129,7 @@ def set_colorbar(ax,A,i,label=r'$\rm{[\mu K_{CMB}]}$'):
 
     Returns
     -------
-    None
+    None.
 
     """
     def axins(i):
@@ -167,8 +167,13 @@ def powspec(image, im2=None, reso=1, apo=1, N_bin=40, lin_log_trans=3, ret_bins=
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    numpy 1D array
+        Center of each k bin.
+    numpy 1D array
+        Power spectrum values.
+    numpy 1D array
+        Bin edges.
+        Only returned if ret_bins = True.
 
     """
       
@@ -251,6 +256,24 @@ def powspec(image, im2=None, reso=1, apo=1, N_bin=40, lin_log_trans=3, ret_bins=
         return tab_k, spec_k, bins
 
 def apodize(na, nb, radius):
+    """
+    Build a mask to apodize non-periodic data.
+
+    Parameters
+    ----------
+    na : int
+        Size in x.
+    nb : int
+        Size in y.
+    radius : float
+        Fraction of kept pixels along each axis.
+
+    Returns
+    -------
+    numpy 2D array
+        Apodization mask.
+
+    """
     na = int(na)
     nb = int(nb)
     ni = int(radius * na)
@@ -271,6 +294,21 @@ def apodize(na, nb, radius):
     return tapper
 
 def phase_random(x):
+    """
+    Computes the phase randomisation of a process. Simple way to construct a close-to-Gaussian map 
+    that has the same power spectrum as the initial process.
+
+    Parameters
+    ----------
+    x : numpy 2D array
+        Process to be phase randomized.
+
+    Returns
+    -------
+    numpy 2D array
+        A phase randomization of x.
+
+    """
     [M,N] = np.shape(x) # M and N must be multiples of 2
     ft_x = np.fft.fftshift(np.fft.fft2(x))
     mod_ft_x = np.abs(ft_x)
@@ -279,10 +317,71 @@ def phase_random(x):
     angle_ft_gauss = np.angle(ft_gauss)
     new_ft_x = mod_ft_x * np.exp(1j*angle_ft_gauss)
     rand_x = np.fft.ifft2(np.fft.ifftshift(new_ft_x))
-    return np.real(rand_x)
+    pr_x = np.real(rand_x)
+    return pr_x
 
-def plot_PS(images,labels,colors=color,styles=style,reso=1,apo=0.95,N_bin=100,a=4,cross=None,ret_PS=False,abs_cross=True,axis='k',fontsize=20,plot=True):
-    # cross has to be a list of ["index 1","index 2","color","style"]
+def plot_PS(images,labels=None,colors=None,styles=None,reso=1,apo=0.95,N_bin=40,lin_log_trans=3,cross=None,ret_PS=False,abs_cross=True,axis='k',fontsize=20,plot=True):
+    """
+    Computes and plots the power spectra of a set of maps.
+
+    Parameters
+    ----------
+    images : numpy 2D, 3D or 4D array
+        Map(s) of which the power spectra are computed.
+        If 2D array, the power spectrum of the map is plotted.
+        If 3D array, the power spectrum of each map is plotted.
+        If 4D array, the mean and std of the power spectra computed on the first axis are plotted.
+    labels : list, optional
+        List of the labels of each curve.
+        The default is None.
+    colors : list, optional
+        List of the colors of each curve. 
+        The default is None.
+    styles : list, optional
+        List of the linestyles of each curve. 
+        The default is None.
+    reso : float, optional
+        Pixel size in arcminutes. 
+        The default is 1.
+    apo : float, optional
+        Apodization fraction. 
+        The default is 0.95.
+    N_bin : int, optional
+        Bin number. 
+        The default is 40.
+    lin_log_trans : TYPE, optional
+        Define the transition between the linear and logarithmic binning regime. 
+        The default is 3.
+    cross : list, optional
+        Additional cross spectra to compute. 
+        It has to be a list of ["index of map 1", "index of map 2", "color", "style"].
+        The default is None.
+    ret_PS : bool, optional
+        Returns the power spectra values. 
+        The default is False.
+    abs_cross : bool, optional
+        Plot the absolute value of the cross spectra. 
+        The default is True.
+    axis : str, optional
+        Unit of the x-axis. Choose 'k' for wavenumbers in arcmin-1 and 'l' for multipoles.
+        The default is 'k'.
+    fontsize : int, optional
+        Fontsize of the plot. 
+        The default is 20.
+    plot : bool, optional
+        Plot the figure. 
+        The default is True.
+
+    Returns
+    -------
+    numpy 1D array
+        Center of the bins.
+    numpy 2D array
+        Vector of the (mean of the) power spectra.
+    numpy 2D array
+        Vector of the std of the power spectra.
+
+    """
     if axis == 'k':
         k_to_l = 1
     if axis == 'l':
@@ -298,20 +397,26 @@ def plot_PS(images,labels,colors=color,styles=style,reso=1,apo=0.95,N_bin=100,a=
         (t,n,M,N) = np.shape(images)
     if len(np.shape(images)) != 2 and len(np.shape(images)) != 3 and len(np.shape(images)) != 4:
         print("Invalid data shape !")
+    if labels is None:
+        labels = np.arange(1,n+1).astype(str).tolist()
+    if colors is None:
+        colors = color[:n]
+    if styles is None:
+        styles = ['-']*n
     if t == 1:
         # PS computation
         if n == 1:
-            PS = powspec(images,reso=reso,apo=apo,N_bin=N_bin,a=a)
+            PS = powspec(images,reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans)
         else:
             PS = []
             for i in range(n):
-                PS.append(powspec(images[i],reso=reso,apo=apo,N_bin=N_bin,a=a))
+                PS.append(powspec(images[i],reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans))
             if cross is not None:
                 for i in range(len(cross)):
                     if not abs_cross:
-                        PS.append(powspec(images[cross[i][0]],im2=images[cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,a=a))
+                        PS.append(powspec(images[cross[i][0]],im2=images[cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans))
                     else:
-                        PS.append(np.abs(powspec(images[cross[i][0]],im2=images[cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,a=a)))
+                        PS.append(np.abs(powspec(images[cross[i][0]],im2=images[cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans)))
         PS = np.array(PS)
         # Plot
         if plot:
@@ -330,17 +435,17 @@ def plot_PS(images,labels,colors=color,styles=style,reso=1,apo=0.95,N_bin=100,a=
         power_spectra = []
         for j in range(t):
             if n == 1:
-                power_spectra.append(powspec(images[j,0],reso=reso,apo=apo,N_bin=N_bin,a=a))
+                power_spectra.append(powspec(images[j,0],reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans))
             else:
                 PS = []
                 for i in range(n):
-                    PS.append(powspec(images[j,i],reso=reso,apo=apo,N_bin=N_bin,a=a))
+                    PS.append(powspec(images[j,i],reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans))
                 if cross is not None:
                     for i in range(len(cross)):
                         if not abs_cross:
-                            PS.append(powspec(images[j,cross[i][0]],im2=images[j,cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,a=a))
+                            PS.append(powspec(images[j,cross[i][0]],im2=images[j,cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans))
                         else:
-                            PS.append(np.abs(powspec(images[j,cross[i][0]],im2=images[j,cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,a=a)))
+                            PS.append(np.abs(powspec(images[j,cross[i][0]],im2=images[j,cross[i][1]],reso=reso,apo=apo,N_bin=N_bin,lin_log_trans=lin_log_trans)))
                 power_spectra.append(PS)
         power_spectra = np.array(power_spectra)
         # Plot
@@ -378,6 +483,50 @@ def plot_PS(images,labels,colors=color,styles=style,reso=1,apo=0.95,N_bin=100,a=
         return
     
 def plot_wph(images,labels=None,colors=None,styles=None,J=None,L=4,dn=0,pbc=False,ret_coeffs=False,full_angle=True):
+    """
+    Plots the modulus of the WPH coefficients of a set of maps.
+
+    Parameters
+    ----------
+    images : numpy 2D, 3D or 4D array
+        Map(s) of which the WPH statistics are computed.
+        If 2D array, the WPH statistics of the map are plotted.
+        If 3D array, the WPH statistics of each map are plotted.
+        If 4D array, the mean and std of the WPH statistics computed on the first axis are plotted.
+    labels : list, optional
+        List of the labels of each curve.
+    colors : list, optional
+        List of the colors of each curve. 
+        The default is color.
+    styles : list, optional
+        List of the linestyles of each curve. 
+        The default is style.
+        DESCRIPTION. The default is None.
+    J : int, optional
+        Number of dyadic scale to probe. 
+        The default is None.
+    L : int, optional
+        Number of angles to probe. 
+        The default is 4.
+    dn : int, optional
+        Number of translation to compute. 
+        The default is 0.
+    pbc : bool, optional
+        Set it to True if the data are periodic. 
+        The default is False.
+    ret_coeffs : bool, optional
+        Returns the WPH statistics. 
+        The default is False.
+    full_angle : bool, optional
+        Set it to True to compute the WPH statistics of all angle. 
+        The default is True.
+
+    Returns
+    -------
+    numpy 3D array
+        Array containing the mean and std of the WPH statistics of each map.
+
+    """
     if len(np.shape(images)) == 2:
         (M,N) = np.shape(images)
         n = 1
@@ -391,6 +540,12 @@ def plot_wph(images,labels=None,colors=None,styles=None,J=None,L=4,dn=0,pbc=Fals
         print("Invalid data shape !")
     if J==None:
         J = int(np.log2(min(M,N)) - 2)
+    if labels is None:
+        labels = np.arange(1,n+1).astype(str).tolist()
+    if colors is None:
+        colors = color[:n]
+    if styles is None:
+        styles = ['-']*n
     wph_op = pw.WPHOp(M, N, J, L=L, dn=dn, device="cpu",full_angle=full_angle)
     wph_model = ['S11','S00','S01','Cphase','C00','C01']
     wph_op.load_model(wph_model)
@@ -445,6 +600,48 @@ def plot_wph(images,labels=None,colors=None,styles=None,J=None,L=4,dn=0,pbc=Fals
         return
     
 def plot_hist(images,labels=None,colors=None,styles=None,n_bins=100,log=False,density=True,value_range=None,fontsize=15,nature=r'$\rm{I}$'):
+    """
+    Plots the histograms of the data.
+
+    Parameters
+    ----------
+    images : numpy 2D, 3D or 4D array
+        Map(s) of which the histogram is computed.
+        If 2D array, the histogram of the map is plotted.
+        If 3D array, the histogram of each map is plotted.
+        If 4D array, the mean and std of the histograms computed on the first axis are plotted.
+    labels : list, optional
+        List of the labels of each curve.
+    colors : list, optional
+        List of the colors of each curve. 
+        The default is color.
+    styles : list, optional
+        List of the linestyles of each curve. 
+        The default is style.
+    n_bins : int, optional
+        Bin number. 
+        The default is 100.
+    log : bool, optional
+        Puts the y scale in log. 
+        The default is False.
+    density : bool, optional
+        Normalizes the histogram. 
+        The default is True.
+    value_range : tuple, optional
+        Min and max values of the histogram. 
+        The default is None.
+    fontsize : float, optional
+        Fontsize of the plot. 
+        The default is 15.
+    nature : str, optional
+        Unit of the data. 
+        The default is r'$\rm{I}$'.
+
+    Returns
+    -------
+    None.
+
+    """
     if len(np.shape(images)) == 2:
         images = np.array([images])
     (n,N,N) = np.shape(images)
@@ -472,6 +669,43 @@ def plot_hist(images,labels=None,colors=None,styles=None,n_bins=100,log=False,de
     return
     
 def synthesis_wph(data,n_syn=1,n_step=50,print_loss=False,pbc=False,verbose=False,device='cpu',dn=2,tau_grid='exp'):
+    """
+    Generate synthesized map(s) of a given process using WPH statistics.
+
+    Parameters
+    ----------
+    data : numpy 2D array
+        Data of which syntheses will be computed.
+    n_syn : int, optional
+        Number of syntheses. 
+        The default is 1.
+    n_step : int, optional
+        Number of steps if the synthesis algorithm. 
+        The default is 50.
+    print_loss : bool, optional
+        Prints the loss at each iteration. 
+        The default is False.
+    pbc : bool, optional
+        Set it to True if the data are periodic. 
+        The default is False.
+    verbose : bool, optional
+        Set it to True to print some stuff during the run. 
+        The default is False.
+    device : str, optional
+        Device on which the algorithm is runned. 
+        The default is 'cpu'.
+    dn : int, optional
+        Number of translation in the WPH statistics computation. 
+        The default is 2.
+    tau_grid : str, optional
+        Method for the definition of the translations. The default is 'exp'.
+
+    Returns
+    -------
+    numpy 2D or 3D array
+        Synthesis or array of syntheses of the given process.
+
+    """
     image = np.copy(data)
     (M,N) = np.shape(image)
     J = int(np.log2(min(M,N)) - 2)
