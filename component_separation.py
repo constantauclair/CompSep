@@ -140,7 +140,7 @@ if __name__ == "__main__":
         print("Starting era "+str(i+1)+"...")
         s_tilde = torch.from_numpy(s_tilde).to(device) # Initialization of the map
         print('Computing stuff...')
-        bias, std = compute_bias_std(s_tilde, n_batch) # Computation of the bias and std
+        bias, std = compute_bias_std(s_tilde, n_batch, wph_op, pbc, Mn, batch_number, batch_size, device) # Computation of the bias and std
         coeffs = wph_op.apply(torch.from_numpy(d).to(device), norm=None, pbc=pbc) # Coeffs computation
         if style == 'B':
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs),dim=0),torch.unsqueeze(torch.imag(coeffs),dim=0)))
