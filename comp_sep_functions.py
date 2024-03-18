@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import sys
-import time
 from scipy.optimize import curve_fit
 
 def create_batch(n, device, batch_number, batch_size, N):
@@ -240,56 +239,3 @@ def compute_loss_JM(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
         loss_tot += loss.detach().cpu()
         del coeffs_chunk, indices, loss
     return loss_tot
-
-def objective(x, device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn):
-    """
-    Computes the loss and the corresponding gradient.
-
-    Parameters
-    ----------
-    x : torch 2D tensor
-        Running map.
-    device : int or str
-        Device on which the computations are done.
-    style : str
-        'B' for "Bruno's formalism", 'JM' for "Jean-Marc's formalism".
-    coeffs_target : torch 1D tensor
-        Target WPH statistics.
-    std : torch 1D tensor
-        Standard deviations of the WPH statistics.
-    mask : torch 1D tensor
-        Mask for the WPH statistics.
-    wph_op : pywph.wph_op
-        WPH statistics operator.
-    noise : numpy 3D array
-        Noise maps.
-    pbc : bool
-        True for periodic boundary conditions.
-    N : int
-        Map size.
-    Mn : int
-        Number of noise maps.
-
-    Returns
-    -------
-    float
-        Loss value.
-    torch 1D tensor
-        Gradient of the loss.
-
-    """
-    global eval_cnt
-    print(f"Evaluation: {eval_cnt}")
-    start_time = time.time()
-    u = x.reshape((N, N)) # Reshape x
-    u = torch.from_numpy(u).to(device).requires_grad_(True) # Track operations on u
-    if style == 'B':
-        L = compute_loss_B(u, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc) # Compute the loss 'à la Bruno'
-    if style == 'JM':
-        L = compute_loss_JM(u, coeffs_target, std, mask, device, Mn, wph_op, pbc) # Compute the loss 'à la Jean-Marc'
-    u_grad = u.grad.cpu().numpy().astype(x.dtype) # Compute the gradient
-    print("L = "+str(round(L.item(),3)))
-    print("(computed in "+str(round(time.time() - start_time,3))+"s)")
-    print("")
-    eval_cnt += 1
-    return L.item(), u_grad.ravel()

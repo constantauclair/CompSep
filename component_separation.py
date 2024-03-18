@@ -9,7 +9,7 @@ import os
 cwd = os.getcwd()
 import sys
 sys.path.append(cwd)
-from comp_sep_functions import create_batch, compute_bias_std, compute_mask, objective
+from comp_sep_functions import create_batch, compute_bias_std, compute_mask, compute_loss_B, compute_loss_JM
 
 '''
 This component separation algorithm aims to separate the statistics of a non-Gaussian field from noise
@@ -58,6 +58,43 @@ batch_number = int(Mn/batch_size) # Number of batches
 wph_model = ["S11","S00","S01","Cphase","C01","C00","L"] # Set of WPH coefficient to use
 
 ###############################################################################
+# OBJECTIVE FUNCTION
+###############################################################################
+
+def objective(x):
+    """
+    Computes the loss and the corresponding gradient.
+
+    Parameters
+    ----------
+    x : torch 2D tensor
+        Running map.
+
+    Returns
+    -------
+    float
+        Loss value.
+    torch 1D tensor
+        Gradient of the loss.
+
+    """
+    global eval_cnt
+    print(f"Evaluation: {eval_cnt}")
+    start_time = time.time()
+    u = x.reshape((N, N)) # Reshape x
+    u = torch.from_numpy(u).to(device).requires_grad_(True) # Track operations on u
+    if style == 'B':
+        L = compute_loss_B(u, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc) # Compute the loss 'à la Bruno'
+    if style == 'JM':
+        L = compute_loss_JM(u, coeffs_target, std, mask, device, Mn, wph_op, pbc) # Compute the loss 'à la Jean-Marc'
+    u_grad = u.grad.cpu().numpy().astype(x.dtype) # Compute the gradient
+    print("L = "+str(round(L.item(),3)))
+    print("(computed in "+str(round(time.time() - start_time,3))+"s)")
+    print("")
+    eval_cnt += 1
+    return L.item(), u_grad.ravel()
+
+###############################################################################
 # MINIMIZATION
 ###############################################################################
 
@@ -88,7 +125,7 @@ if __name__ == "__main__":
         mask = compute_mask(1, s_tilde0, std, wph_op, wph_model, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde0.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde0.cpu().ravel(), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde0, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde0 = s_tilde0.reshape((N, N)).astype(np.float32)
@@ -112,7 +149,7 @@ if __name__ == "__main__":
         mask = compute_mask(2, s_tilde, std, wph_op, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde.cpu().ravel(), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde = s_tilde.reshape((N, N)).astype(np.float32)
