@@ -482,7 +482,7 @@ def plot_PS(images,labels=None,colors=None,styles=None,reso=1,apo=0.95,N_bin=40,
     else:
         return
     
-def plot_wph(images,labels=None,colors=None,styles=None,J=None,L=4,dn=0,pbc=False,ret_coeffs=False,full_angle=True):
+def plot_wph(images,labels=None,colors=None,styles=None,J=None,L=4,dn=0,pbc=False,ret_coeffs=False):
     """
     Plots the modulus of the WPH coefficients of a set of maps.
 
@@ -517,9 +517,6 @@ def plot_wph(images,labels=None,colors=None,styles=None,J=None,L=4,dn=0,pbc=Fals
     ret_coeffs : bool, optional
         Returns the WPH statistics. 
         The default is False.
-    full_angle : bool, optional
-        Set it to True to compute the WPH statistics of all angle. 
-        The default is True.
 
     Returns
     -------
@@ -546,7 +543,7 @@ def plot_wph(images,labels=None,colors=None,styles=None,J=None,L=4,dn=0,pbc=Fals
         colors = color[:n]
     if styles is None:
         styles = ['-']*n
-    wph_op = pw.WPHOp(M, N, J, L=L, dn=dn, device="cpu",full_angle=full_angle)
+    wph_op = pw.WPHOp(M, N, J, L=L, dn=dn, device="cpu")
     wph_model = ['S11','S00','S01','Cphase','C00','C01']
     wph_op.load_model(wph_model)
     wph = wph_op.apply(images,norm=None,ret_wph_obj=True,pbc=pbc).to_isopar()
