@@ -5,13 +5,64 @@ import time
 from scipy.optimize import curve_fit
 
 def create_batch(n, device, batch_number, batch_size, N):
-    # Creates a batches of noise maps to speed up the std computations.
+    """
+    Creates a batch of noise maps.
+
+    Parameters
+    ----------
+    n : numpy 3D array
+        Vector of noise maps.
+    device : int or str
+        Device on which the batch are put.
+    batch_number : int
+        Number of batch.
+    batch_size : int
+        Number of maps in each batch.
+    N : int
+        Pixel size of the maps.
+
+    Returns
+    -------
+    torch 4D tensor
+        Tensor of batches of noise maps.
+
+    """
     batch = torch.zeros([batch_number,batch_size,N,N])
     for i in range(batch_number):
         batch[i] = torch.from_numpy(n)[i*batch_size:(i+1)*batch_size,:,:]
     return batch.to(device)
 
 def compute_bias_std(x, noise_batch, wph_op, pbc, Mn, batch_number, batch_size, device):
+    """
+    Computes the noise-induced bias on the WPH statistics of x, as well as the corresponding std.
+
+    Parameters
+    ----------
+    x : torch 2D tensor
+        Map on which the bias is computed.
+    noise_batch : torch 4D tensor
+        Noise batches.
+    wph_op : pywph.wph_op
+        The WPH operator.
+    pbc : bool
+        True for periodic boundary conditions.
+    Mn : int
+        Number of noise maps.
+    batch_number : int
+        Number of batch.
+    batch_size : int
+        Number of maps in each batch.
+    device : int or str
+        Device on which the computations are done.
+
+    Returns
+    -------
+    torch 1D tensor
+        Tensor of biases on the WPH statistics.
+    torch 1D tensor
+        Tensor of standard deviations of the WPH statistics.
+
+    """
     # Computes the noise-induced bias on x and the corresponding std
     coeffs_ref = wph_op.apply(x, norm=None, pbc=pbc)
     coeffs_number = coeffs_ref.size(-1)
@@ -32,7 +83,20 @@ def compute_bias_std(x, noise_batch, wph_op, pbc, Mn, batch_number, batch_size, 
     return bias.to(device), std.to(device)
 
 def get_thresh(coeffs):
-    # Computes the appropriate threshold for the WPH coefficients
+    """
+    Computes the appropriate threshold for the WPH statistics in the loss function.
+
+    Parameters
+    ----------
+    coeffs : torch 1D tensor
+        Tensor of the WPH statistics.
+
+    Returns
+    -------
+    float
+        Threshold value.
+
+    """
     coeffs_for_hist = np.abs(coeffs.cpu().numpy().flatten())
     non_zero_coeffs_for_hist = coeffs_for_hist[np.where(coeffs_for_hist>0)]
     hist, bins_edges = np.histogram(np.log10(non_zero_coeffs_for_hist),bins=100,density=True)
@@ -47,23 +111,42 @@ def get_thresh(coeffs):
     thresh = 10**((popt[0]+popt[3])/2)
     return thresh
 
-def compute_mask_S11(x, wph_op, wph_model, pbc, device):
-    # Computes the mask for S11 coeffs (at the first step)
-    wph_op.load_model(wph_model)
-    full_coeffs = wph_op.apply(x,norm=None,pbc=pbc)
-    thresh = get_thresh(full_coeffs)
-    wph_op.load_model(['S11'])
-    coeffs = wph_op.apply(x,norm=None,pbc=pbc)
-    mask_real = torch.abs(torch.real(coeffs)).to(device) > thresh
-    mask_imag = torch.abs(torch.imag(coeffs)).to(device) > thresh
-    print("Real mask computed :",int(100*(mask_real.sum()/mask_real.size(dim=0)).item()),"% of coeffs kept !")
-    print("Imaginary mask computed :",int(100*(mask_imag.sum()/mask_imag.size(dim=0)).item()),"% of coeffs kept !")
-    mask = torch.cat((torch.unsqueeze(mask_real,dim=0),torch.unsqueeze(mask_imag,dim=0)))
-    return mask.to(device)
+def compute_mask(step, x, std, wph_op, wph_model, pbc, device):
+    """
+    Computes the mask for the WPH statistics.
 
-def compute_mask(x, std, wph_op, pbc, device):
-    coeffs = wph_op.apply(x,norm=None,pbc=pbc)
-    thresh = get_thresh(coeffs)
+    Parameters
+    ----------
+    step : int
+        Choose the step of the algorithm.
+    x : torch 2D tensor
+        Reference map for the mask computation.
+    std : torch 1D tensor
+        Standard deviations of the WPH statistics.
+    wph_op : pywph.wph_op
+        WPH statistics operator.
+    wph_model : list
+        Set of WPH coefficients.
+    pbc : bool
+        True for periodic boundary conditions.
+    device : int or str
+        Device on which the computations are done.
+
+    Returns
+    -------
+    torch 1D tensor
+        WPH statistics mask.
+
+    """
+    if step == 1:
+        wph_op.load_model(wph_model)
+        full_coeffs = wph_op.apply(x,norm=None,pbc=pbc)
+        thresh = get_thresh(full_coeffs)
+        wph_op.load_model(['S11'])
+        coeffs = wph_op.apply(x,norm=None,pbc=pbc)
+    if step == 2:
+        coeffs = wph_op.apply(x,norm=None,pbc=pbc)
+        thresh = get_thresh(coeffs)
     mask_real = torch.logical_and(torch.abs(torch.real(coeffs)).to(device) > thresh, std[0].to(device) > 0)
     mask_imag = torch.logical_and(torch.abs(torch.imag(coeffs)).to(device) > thresh, std[1].to(device) > 0)
     print("Real mask computed :",int(100*(mask_real.sum()/mask_real.size(dim=0)).item()),"% of coeffs kept !")
@@ -102,7 +185,7 @@ def compute_loss_JM(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
         del coeffs_chunk, indices, loss
     return loss_tot
 
-def objective(x, device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn):
+def objective(x, device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn, eval_cnt):
     # Computes the loss and the corresponding gradient 
     global eval_cnt
     print(f"Evaluation: {eval_cnt}")

@@ -85,10 +85,10 @@ if __name__ == "__main__":
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs),dim=0),torch.unsqueeze(torch.imag(coeffs),dim=0)))
         if style == 'JM':
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs)-bias[0],dim=0),torch.unsqueeze(torch.imag(coeffs)-bias[1],dim=0)))
-        mask = compute_mask_S11(s_tilde0, wph_op, wph_model, pbc, device) # Mask computation
+        mask = compute_mask(1, s_tilde0, wph_op, wph_model, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde0.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde0.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn, eval_cnt), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde0, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde0 = s_tilde0.reshape((N, N)).astype(np.float32)
@@ -109,10 +109,10 @@ if __name__ == "__main__":
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs),dim=0),torch.unsqueeze(torch.imag(coeffs),dim=0)))
         if style == 'JM':
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs)-bias[0],dim=0),torch.unsqueeze(torch.imag(coeffs)-bias[1],dim=0)))
-        mask = compute_mask(s_tilde, std, wph_op, pbc, device) # Mask computation
+        mask = compute_mask(2, s_tilde, std, wph_op, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde.cpu().ravel(), args=(device, style, coeffs_target, std, mask, wph_op, noise, pbc, N, Mn, eval_cnt), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde = s_tilde.reshape((N, N)).astype(np.float32)
