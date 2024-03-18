@@ -37,7 +37,7 @@ s = np.load('s.npy').astype(np.float64) # Load the contaminated data
 
 SNR = 2 # Signal-to-noise ratio
 
-style = 'B' # Component separation style : 'B' for 'à la Bruno' and 'JM' for 'à la Jean-Marc'
+style = 'JM' # Component separation style : 'B' for 'à la Bruno' and 'JM' for 'à la Jean-Marc'
 
 file_name="separation_results_"+style+".npy" # Name of the ouput file
 
