@@ -29,7 +29,7 @@ This algorithm solves the inverse problem d = s + n from a statistical point of 
 # INPUT DATA
 ###############################################################################
 
-s = np.load('s.npy').astype(np.float64) # Load the contaminated data
+s = np.load('intensity_map.npy').astype(np.float64) # Load the clean data
 
 ###############################################################################
 # INPUT PARAMETERS
