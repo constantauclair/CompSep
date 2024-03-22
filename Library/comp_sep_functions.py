@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import sys
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 def create_batch(n, device, batch_number, batch_size, N):
     """
@@ -84,6 +85,7 @@ def compute_bias_std(x, noise_batch, wph_op, pbc, Mn, batch_number, batch_size, 
 def get_thresh(coeffs):
     """
     Computes the appropriate threshold for the WPH statistics in the loss function.
+    This function uses a Gaussian fit on the histogram of the WPH coefficients.
 
     Parameters
     ----------
@@ -108,6 +110,49 @@ def get_thresh(coeffs):
     guess = [x[0]+(x[-1]-x[0])/4, 1, 0.3, x[0]+3*(x[-1]-x[0])/4, 1, 0.3]
     popt, pcov = curve_fit(func, x, y, p0=guess)
     thresh = 10**((popt[0]+popt[3])/2)
+    return thresh
+
+def get_thresh_peak(coeffs,n_bin=100):
+    """
+    Computes the appropriate threshold for the WPH statistics in the loss function.
+    This function uses the scipy.signal.find_peaks function on the histogram of the WPH coefficients.
+
+    Parameters
+    ----------
+    coeffs : torch 1D tensor
+        Tensor of the WPH statistics.
+    n_bin : int, optional
+        Number of bins for the histogram.
+
+    Returns
+    -------
+    float
+        Threshold value.
+
+    """
+    coeffs_ = torch.cat((torch.real(coeffs),torch.imag(coeffs)),0)
+    non_zero_coeffs_ = coeffs_[torch.where(torch.abs(coeffs_)>0)]
+    for_hist = torch.log10(torch.abs(non_zero_coeffs_)).cpu().numpy()
+    hist, bins_edges = np.histogram(for_hist,bins=n_bin,density=True,range=(-32,32))
+    bins = (bins_edges[:-1] + bins_edges[1:]) / 2
+    x = bins
+    y = hist/np.max(hist)
+    peaks_x, peaks_y = find_peaks(y,height=0.01)
+    if len(peaks_x) == 0:
+        print('Error : no peaks found in coeffs histogram !')
+    if len(peaks_x) == 1:
+        thresh = 10**(np.mean(for_hist)-3*np.std(for_hist))
+    if len(peaks_x) == 2:
+        thresh = 10**((x[peaks_x[0]] + x[peaks_x[1]])/2)
+    if len(peaks_x) > 2:
+        distance = 1
+        while len(peaks_x) > 2:
+            peaks_x, peaks_y = find_peaks(y,height=0.01,distance=distance)
+            distance = distance + 1
+            if distance == n_bin:
+                print('Unable to find two peaks !')
+                break
+        thresh = 10**((x[peaks_x[0]] + x[peaks_x[1]])/2)
     return thresh
 
 def compute_mask(step, x, std, wph_op, wph_model, pbc, device):
@@ -140,12 +185,12 @@ def compute_mask(step, x, std, wph_op, wph_model, pbc, device):
     if step == 1:
         wph_op.load_model(wph_model)
         full_coeffs = wph_op.apply(x,norm=None,pbc=pbc)
-        thresh = get_thresh(full_coeffs)
+        thresh = get_thresh_peak(full_coeffs)
         wph_op.load_model(['S11'])
         coeffs = wph_op.apply(x,norm=None,pbc=pbc)
     if step == 2:
         coeffs = wph_op.apply(x,norm=None,pbc=pbc)
-        thresh = get_thresh(coeffs)
+        thresh = get_thresh_peak(coeffs)
     mask_real = torch.logical_and(torch.abs(torch.real(coeffs)).to(device) > thresh, std[0].to(device) > 0)
     mask_imag = torch.logical_and(torch.abs(torch.imag(coeffs)).to(device) > thresh, std[1].to(device) > 0)
     print("Real mask computed :",int(100*(mask_real.sum()/mask_real.size(dim=0)).item()),"% of coeffs kept !")
