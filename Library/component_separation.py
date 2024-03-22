@@ -29,7 +29,7 @@ This algorithm solves the inverse problem d = s + n from a statistical point of 
 # INPUT DATA
 ###############################################################################
 
-s = np.load('intensity_map.npy').astype(np.float64) # Load the clean data
+s = np.load('../Data/intensity_map.npy').astype(np.float64) # Load the clean data
 
 ###############################################################################
 # INPUT PARAMETERS
@@ -37,12 +37,12 @@ s = np.load('intensity_map.npy').astype(np.float64) # Load the clean data
 
 SNR = 2 # Signal-to-noise ratio
 
-style = 'JM' # Component separation style : 'B' for 'à la Bruno' and 'JM' for 'à la Jean-Marc'
+style = 'B' # Component separation style : 'B' for 'à la Bruno' and 'JM' for 'à la Jean-Marc'
 
-file_name="separation_results_"+style+".npy" # Name of the ouput file
+file_name="../Results/separation_results_"+style+".npy" # Name of the ouput file
 
 (N, N) = np.shape(s) # Size of the maps
-Mn = 50 # Number of noise realizations
+Mn = 100 # Number of noise realizations
 d = s + np.random.normal(0,np.std(s)/SNR,size=(N,N)).astype(np.float64) # Creates the noisy map
 noise = np.random.normal(0,np.std(s)/SNR,size=(Mn,N,N)).astype(np.float64) # Creates the set of noise realizations
 J = int(np.log2(N)-2) # Maximum scale to take into account
