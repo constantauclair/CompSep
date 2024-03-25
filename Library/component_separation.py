@@ -9,7 +9,7 @@ import os
 cwd = os.getcwd()
 import sys
 sys.path.append(cwd)
-from comp_sep_functions import create_batch, compute_bias_std, compute_mask, compute_loss_B, compute_loss_JM
+from comp_sep_functions import create_batch, compute_bias_std, compute_mask, compute_loss_BR, compute_loss_JMD
 
 '''
 This component separation algorithm aims to separate the statistics of a non-Gaussian field from noise
@@ -37,7 +37,7 @@ s = np.load('../Data/intensity_map.npy').astype(np.float64) # Load the clean dat
 
 SNR = 2 # Signal-to-noise ratio
 
-style = 'B' # Component separation style : 'B' for 'à la Bruno' and 'JM' for 'à la Jean-Marc'
+style = 'BR' # Component separation style : 'BR' for Bruno Régaldo Saint-Blancard's formalism and 'JMD' for Jean-Marc Delouis's formalism.
 
 file_name="../Results/separation_results_"+style+".npy" # Name of the ouput file
 
@@ -67,8 +67,8 @@ def objective(x):
 
     Parameters
     ----------
-    x : torch 2D tensor
-        Running map.
+    x : torch 1D tensor
+        Flattened running map.
 
     Returns
     -------
@@ -83,10 +83,10 @@ def objective(x):
     start_time = time.time()
     u = x.reshape((N, N)) # Reshape x
     u = torch.from_numpy(u).to(device).requires_grad_(True) # Track operations on u
-    if style == 'B':
-        L = compute_loss_B(u, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc) # Compute the loss 'à la Bruno'
-    if style == 'JM':
-        L = compute_loss_JM(u, coeffs_target, std, mask, device, Mn, wph_op, pbc) # Compute the loss 'à la Jean-Marc'
+    if style == 'BR':
+        L = compute_loss_BR(u, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc) # Compute the loss 'à la Bruno'
+    if style == 'JMD':
+        L = compute_loss_JMD(u, coeffs_target, std, mask, device, Mn, wph_op, pbc) # Compute the loss 'à la Jean-Marc'
     u_grad = u.grad.cpu().numpy().astype(x.dtype) # Compute the gradient
     print("L = "+str(round(L.item(),3)))
     print("(computed in "+str(round(time.time() - start_time,3))+"s)")
@@ -118,9 +118,9 @@ if __name__ == "__main__":
         print('Computing stuff...')
         bias, std = compute_bias_std(s_tilde0, n_batch, wph_op, pbc, Mn, batch_number, batch_size, device) # Computation of the bias and std
         coeffs = wph_op.apply(torch.from_numpy(d).to(device), norm=None, pbc=pbc) # Coeffs computation
-        if style == 'B':
+        if style == 'BR':
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs),dim=0),torch.unsqueeze(torch.imag(coeffs),dim=0)))
-        if style == 'JM':
+        if style == 'JMD':
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs)-bias[0],dim=0),torch.unsqueeze(torch.imag(coeffs)-bias[1],dim=0)))
         mask = compute_mask(1, s_tilde0, std, wph_op, wph_model, pbc, device) # Mask computation
         print('Stuff computed !')
@@ -142,9 +142,9 @@ if __name__ == "__main__":
         print('Computing stuff...')
         bias, std = compute_bias_std(s_tilde, n_batch, wph_op, pbc, Mn, batch_number, batch_size, device) # Computation of the bias and std
         coeffs = wph_op.apply(torch.from_numpy(d).to(device), norm=None, pbc=pbc) # Coeffs computation
-        if style == 'B':
+        if style == 'BR':
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs),dim=0),torch.unsqueeze(torch.imag(coeffs),dim=0)))
-        if style == 'JM':
+        if style == 'JMD':
             coeffs_target = torch.cat((torch.unsqueeze(torch.real(coeffs)-bias[0],dim=0),torch.unsqueeze(torch.imag(coeffs)-bias[1],dim=0)))
         mask = compute_mask(2, s_tilde, std, wph_op, wph_model, pbc, device) # Mask computation
         print('Stuff computed !')

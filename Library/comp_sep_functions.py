@@ -198,9 +198,9 @@ def compute_mask(step, x, std, wph_op, wph_model, pbc, device):
     mask = torch.cat((torch.unsqueeze(mask_real,dim=0),torch.unsqueeze(mask_imag,dim=0)))
     return mask.to(device)
 
-def compute_loss_B(x, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc):
+def compute_loss_BR(x, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc):
     """
-    Computes the loss in "Bruno's formalism".
+    Computes the loss in "Bruno Régaldo Saint-Blancard's formalism".
 
     Parameters
     ----------
@@ -243,9 +243,9 @@ def compute_loss_B(x, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc):
             del coeffs_chunk, indices, loss
     return loss_tot
 
-def compute_loss_JM(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
+def compute_loss_JMD(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
     """
-    Computes the loss in "Jean-Marc's formalism".
+    Computes the loss in "Jean-Marc Delouis's formalism".
 
     Parameters
     ----------
