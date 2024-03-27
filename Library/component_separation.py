@@ -50,8 +50,8 @@ L = 4 # Number of wavelet orientations in [0,pi]
 method = 'L-BFGS-B' # Optimizer
 pbc = False # Periodic boundary conditions
 dn = 5 # Number of translations
-n_step = 3 # Number of steps of optimization
-iter_per_step = 30 # Number of iterations in each step
+n_step = 5 # Number of steps of optimization
+n_iter = 50 # Number of iterations in each step
 device = 0 # GPU to use
 batch_size = 5 # Size of the batches for WPH computations
 batch_number = int(Mn/batch_size) # Number of batches
@@ -125,7 +125,7 @@ if __name__ == "__main__":
         mask = compute_mask(1, s_tilde0, std, wph_op, wph_model, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde0.cpu().ravel(), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde0.cpu().ravel(), method=method, jac=True, tol=None, options={"maxiter": n_iter, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde0, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde0 = s_tilde0.reshape((N, N)).astype(np.float32)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         mask = compute_mask(2, s_tilde, std, wph_op, wph_model, pbc, device) # Mask computation
         print('Stuff computed !')
         print('Beginning optimization...')
-        result = opt.minimize(objective, s_tilde.cpu().ravel(), method=method, jac=True, tol=None, options={"maxiter": iter_per_step, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
+        result = opt.minimize(objective, s_tilde.cpu().ravel(), method=method, jac=True, tol=None, options={"maxiter": n_iter, "gtol": 1e-14, "ftol": 1e-14, "maxcor": 20})
         final_loss, s_tilde, niter, msg = result['fun'], result['x'], result['nit'], result['message']
         # Reshaping
         s_tilde = s_tilde.reshape((N, N)).astype(np.float32)
