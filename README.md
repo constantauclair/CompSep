@@ -4,7 +4,7 @@ The codes allow to separate a unknown signal of interest from a contamination of
 \
 The Jupyter Notebook Separation_analysis.ipynb gives some tools to analyse the results of the component separation. \
 \
-The Library folder contains four files: the component separation algorithm component_separation.py, the component separation functions comp_sep_functions.py, the plot tools tools.py and a component separation tutorial notebook tutorial.ipynb. \
+The Library folder contains four files: the component separation algorithm component_separation.py, the component separation functions comp_sep_functions.py, the plot tools tools.py and a component separation tutorial notebook tutorial.ipynb. It also contains an "images" folder in which there is some figures of the tutorial notebook. \
 \
 The Data folder contains a map which can be used as a template for a non-Gaussian process. It comes from the total intensity Planck observation at 353 GHz of the Chameleon-Musca region. \
 \
