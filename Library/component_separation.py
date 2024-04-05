@@ -86,7 +86,7 @@ def objective(x):
     if style == 'BR':
         L = compute_loss_BR(u, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc) # Compute the loss 'à la Bruno'
     if style == 'JMD':
-        L = compute_loss_JMD(u, coeffs_target, std, mask, device, Mn, wph_op, pbc) # Compute the loss 'à la Jean-Marc'
+        L = compute_loss_JMD(u, coeffs_target, std, mask, device, wph_op, pbc) # Compute the loss 'à la Jean-Marc'
     u_grad = u.grad.cpu().numpy().astype(x.dtype) # Compute the gradient
     print("L = "+str(round(L.item(),3)))
     print("(computed in "+str(round(time.time() - start_time,3))+"s)")

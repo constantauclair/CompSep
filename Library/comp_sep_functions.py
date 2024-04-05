@@ -243,7 +243,7 @@ def compute_loss_BR(x, coeffs_target, std, mask, device, Mn, wph_op, noise, pbc)
             del coeffs_chunk, indices, loss
     return loss_tot
 
-def compute_loss_JMD(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
+def compute_loss_JMD(x, coeffs_target, std, mask, device, wph_op, pbc):
     """
     Computes the loss in "Jean-Marc Delouis's formalism".
 
@@ -259,8 +259,6 @@ def compute_loss_JMD(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
         Mask for the WPH statistics.
     device : int or str
         Device on which the computation are done.
-    Mn : int
-        Number of noise maps.
     wph_op : pywph.wph_op
         WPH statistics operator.
     pbc : bool
@@ -279,7 +277,7 @@ def compute_loss_JMD(x, coeffs_target, std, mask, device, Mn, wph_op, pbc):
     u, nb_chunks = wph_op.preconfigure(x, requires_grad=True, pbc=pbc)
     for i in range(nb_chunks):
         coeffs_chunk, indices = wph_op.apply(u, i, norm=None, ret_indices=True, pbc=pbc)
-        loss = ( torch.sum(torch.abs( (torch.real(coeffs_chunk)[mask[0,indices]] - coeffs_target[0][indices][mask[0,indices]]) / std[0][indices][mask[0,indices]] ) ** 2) + torch.sum(torch.abs( (torch.imag(coeffs_chunk)[mask[1,indices]] - coeffs_target[1][indices][mask[1,indices]]) / std[1][indices][mask[1,indices]] ) ** 2) ) / ( mask[0].sum() + mask[1].sum() ) / Mn
+        loss = ( torch.sum(torch.abs( (torch.real(coeffs_chunk)[mask[0,indices]] - coeffs_target[0][indices][mask[0,indices]]) / std[0][indices][mask[0,indices]] ) ** 2) + torch.sum(torch.abs( (torch.imag(coeffs_chunk)[mask[1,indices]] - coeffs_target[1][indices][mask[1,indices]]) / std[1][indices][mask[1,indices]] ) ** 2) ) / ( mask[0].sum() + mask[1].sum() )
         loss.backward(retain_graph=True)
         loss_tot += loss.detach().cpu()
         del coeffs_chunk, indices, loss
