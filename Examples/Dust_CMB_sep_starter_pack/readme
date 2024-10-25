@@ -1,0 +1,14 @@
+This folder contains some codes to investigate the component separation between dust, CMB and noise on Planck polarization data.
+
+We present the different elements :
+
+The folder "pywavan-master" contains the pywavan package (https://github.com/jfrob27/pywavan) that I slightly modified, in particular the "powspec" function.
+This module has to be installed to properly use the power spectrum plot functions.
+
+The file "statistical_tools.py" contains some useful functions, in particular for the building of figures.
+
+The file "make_IQU_separation.py" is the component separation algorithm, which allows to produce dust polarization models from (CMB and noise)-contaminated data.
+
+The file "make_QU_syntheses.py" is the synthesis algorithm, which allows to produce realizations of a dust polarization model.
+
+The file "make_IQU_separation_plots.ipynb" is a Jupyter notebook which contains codes to build several plots about the dust model.
